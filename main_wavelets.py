@@ -2,7 +2,6 @@ import os
 import sys
 import datetime
 import time
-
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog
@@ -12,6 +11,7 @@ import numpy as np
 import ctypes
 import matplotlib.pyplot as plt
 import math
+from PIL import Image
 
 image_path = ""
 folder_path = ""
@@ -28,6 +28,16 @@ extremum_row_min_array = []
 extremum_row_max_array = []
 extremum_col_min_array = []
 extremum_col_max_array = []
+
+
+def convert_jpg_to_png(jpg_file_path, png_file_path):
+    try:
+        img = Image.open(jpg_file_path)
+        img_converted = img.convert("RGB")
+        img_converted.save(png_file_path, "PNG")
+        print(f"Image saved as {png_file_path}")
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 class App(ctk.CTk):
@@ -159,7 +169,7 @@ class App(ctk.CTk):
     def load_image_callback(self):
         global image_path
         filetypes = (
-            ("Image files", "*.img *.jpeg *.jpg *.png"),
+            ("Image files", "*.jpeg *.jpg *.png"),
             ("All files", "*.*")
         )
         filename = tk.filedialog.askopenfilename(
@@ -185,9 +195,15 @@ class App(ctk.CTk):
                 widget.configure(state='disabled')
 
         radio_var = self.radio_var.get()
-
         global image_path
+
+        filename, file_extension = os.path.splitext(image_path)
+        if file_extension.lower() in ['.jpg', '.jpeg']:
+            png_file_path = filename + '.png'
+            convert_jpg_to_png(image_path, png_file_path)
+            image_path = png_file_path
         image = cv2.imread(image_path)
+
         b, g, r = cv2.split(image)
         global data
         if radio_var == 1:
@@ -239,7 +255,7 @@ class App(ctk.CTk):
                                                border_color="black", border_width=2)
         self.button_save_scales.configure(text="Сохранено", text_color="black", fg_color="white", border_color="black",
                                           border_width=2)
-            
+
         f.close()
 
     def on_entry_click(self, event):
@@ -255,7 +271,7 @@ class App(ctk.CTk):
     def compute_wavelets(self, info_out):
         global num_scale, rows, cols, data, scales, result
         t_compute_wavelet_start = time.time()
-        lib = ctypes.CDLL("./dll_wavelets.dll")
+        lib = ctypes.CDLL("./dll_wavelets3.dll")
         lib.morlet_wavelet.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_double),
                                        ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
 
@@ -310,8 +326,7 @@ class App(ctk.CTk):
                 plt.imshow(result[scale], cmap='viridis')
                 plt.title(f'Wavelets:Scale = {scales[scale]}')
                 plt.colorbar()
-                image_path = os.path.join(scale_folder_path, f'График_расчетов_В_П_Масштаб_{scales[scale]}.png')
-                plt.savefig(image_path)
+                plt.savefig(os.path.join(scale_folder_path, f'График_расчетов_В_П_Масштаб_{scales[scale]}.png'))
                 plt.close()
 
         if info_out == 11:
@@ -595,7 +610,7 @@ class App(ctk.CTk):
                 if len(extremum_row_max_array) > 0:
                     self.compute_dist_angle(extremum_row_max_array[scale],
                                             text="Расстояния_и_углы_максимальные_по_строкам_", scale=scales[scale])
-        mb.showinfo(title="Информация", message="Вычисления выполнены успешно. \n" 
+        mb.showinfo(title="Информация", message="Вычисления выполнены успешно. \n"
                                                 "Все файлы сохранены в папку: \n" + folder_path + ".")
         sys.exit(0)
 
